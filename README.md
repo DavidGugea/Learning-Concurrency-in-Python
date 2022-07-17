@@ -10,7 +10,7 @@
 ## 8. Multiprocessing
 ## 9. Event-Driven Programming
 ## 10. Reactive Programming
-## 11. Uing the GPU
+## 11. Using the GPU
 ## 12. Choosing a Solution
 
 ---
@@ -194,3 +194,278 @@ The advantage to using Jython is that you can do some pretty cool things with it
 ### IronPython
 
 IronPython is the .NET equivalent of Jython and works on top of Microsoft's .NET framework. Again, you'll be able to use it in a complementary fashion with .NET applications. This is somewhat beneficial for .NET developers, as they are able to use Python as a fast and expressive scripting language within their .NET applications
+
+# 2. Parallelize It
+
+## Introduction
+
+Concurrency is, essentially, the practice of doing multiple things at the same time, but not, specifically, in parallel. It can help us to improve the perceived performance of our applications, and it can also improve the speed at which our applications run.
+
+The best way to think of how concurrency works is to imagine one person working on multiple tasks and quickly switching between these tasks. Imagine this one person working concurrently on a program, and, at the same time, dealing with support requests. This person would focus primarily on the writing of their program, and quickly context switch to fixing a bug or dealing with a support issue should there be one. Once they complete the support task, they could switch context again, back to writing their program really quickly.
+
+## Understanding concurrency
+
+Concurrency is, essentially, the practice of doing multiple things at the same time, but not, specifically, in parallel. It can help us to improve the perceived performance of our applications, and it can also improve the speed at which our applications run.
+
+The best way to think of how concurrency works is to imagine one person working on multiple tasks and quickly switching between these tasks. Imagine this one person working concurrently on a program, and, at the same time, dealing with support requests. This person would focus primarily on the writing of their program, and quickly context switch to fixing a bug or dealing with a support issue should there be one. Once they complete the support task, they could switch context again, back to writing their program really quickly.
+
+However, in computing, there are typically two performance bottlenecks that we have to watch out for and guard against when writing our programs. It's important to know the differences between the two bottlenecks, as if you try to apply concurrency to a CPU-based bottleneck, then you would find that the program actually starts to see a decrease in performance as opposed to an increase. And if you tried to apply parallelism to a task that really requires a concurrent solution, then you could again see the same performance hits.
+
+## Properties of concurrent systems
+
+All concurrent systems share a similar set of properties; these can be defined as follows:
+
+* **Multiple actors:** This represents the different processes and threads all trying to actively make progress on their own tasks. We could have multiple processes that contain multiple threads all trying to run at the same time.
+* **Shared resources:** This feature represents the memory, disk, and other resources that the actors in the preceding group must utilize in order to perform what they need to do.
+* **Rules:** These are a strict set of rules that all concurrent systems must follow, and which define when actors can and can't acquire locks, access memory, modify state, and so on. These rules are vital in order for these concurrent systems to work, otherwise, our programs would tear themselves apart.
+
+## I/O bottlenecks
+
+I/O bottlenecks, or I/O bottlenecks for short, are bottlenecks where your computer spends more time waiting on various inputs and outputs than it does on processing the information.
+
+You'll typically find this type of bottleneck when you are working with an I/O heavy application. We could take your standard web browser as an example of a heavy I/O application. In a browser, we typically spend a significantly longer amount of time waiting for network requests to finish for things such as style sheets, scripts, or HTML pages to load as opposed to rendering this on the screen.
+
+***If the rate at which data is requested is slower than the rate at which it is consumed, then you have an I/O bottleneck.***
+
+One of the main ways to improve the speed of these applications is to either improve the speed of the underlying I/O by buying more expensive and faster hardware, or to improve the way in which we handle these I/O requests.
+
+## Understanding parallelism
+
+In the first chapter, we covered a bit about Python's multiprocessing capabilities, and how we could use this to take advantage of more of the processing cores in our hardware. But what do we mean when we say that our programs are running in parallel?
+
+Parallelism is the art of executing two or more actions simultaneously as opposed to concurrency in which you make progress on two or more things at the same time. This is an important distinction, and in order to achieve true parallelism, we'll need multiple processor cores on which to run our code at the same time.
+
+A good analogy for parallel processing is to think of a queue for Coke. If you have, say, two queues of 20 people, all waiting to use a coke machine so that they can get through the rest of the day with a bit of a sugar rush, well, this would be an example of concurrency. Now say you were to introduce a second coke machine into the mix--this would then be an example of something happening in parallel. This is exactly how parallel processing works--each of the coke machines in that room represents one processing core, and is able to make progress on tasks simultaneously:
+
+![Concurrent vs parallel](ScreenshotsForNotes/Chapter2/Concurrent_vs_Parallel.PNG)
+
+A real-life example that highlights the true power of parallel processing is your computer's graphics card. These graphics cards tend to have hundreds, if not thousands, of individual processing cores that live independently, and can compute things at the same time. The reason we are able to run high-end PC games at such smooth frame rates is due to the fact we've been able to put so many parallel cores onto these cards.
+
+## CPU-bound bottlenecks
+
+A CPU-bound bottleneck is, typically, the inverse of an I/O-bound bottleneck. This bottleneck is found in applications that do a lot of heavy number crunching, or any other task that is computationally expensive. These are programs for which the rate at which they execute is bound by the speed of the CPU--if you throw a faster CPU in your machine you should see a direct increase in the speed of these programs.
+
+***If the rate at which you are processing data far outweighs the rate at which you are requesting data, then you have a CPU-bound bottleneck.***
+
+## Single-core CPUs
+
+Single-core processors will only ever execute one thread at any given time as that is all they are capable of. However, in order to ensure that we don't see our applications hanging and being unresponsive, these processors rapidly switch between multiple threads of execution many thousands of times per second. This switching between threads is what is called a "context switch," and involves storing all the necessary information for a thread at a specific point in time, and then restoring it at a different point further down the line.
+
+Using this mechanism of constantly saving and restoring threads allows us to make progress on quite a number of threads within a given second, and it appears like the computer is doing multiple things at once. It is, in fact, doing only one thing at any given time, but doing it at such speed that it's imperceptible to the users of that machine.
+
+When writing multithreaded applications in Python, it is important to note that these context switches are, computationally, quite expensive. There is no way to get around this, unfortunately, and much of the design of operating systems these days is about optimizing for these context switches so that we don't feel the pain quite as much.
+
+The following are the advantages of single-core CPUs:
+
+* They do not require any complex communication protocols between multiple cores
+* Single-core CPUs require less power, which makes them better suited for IoT devices
+
+Single-core CPUs, however, have these disadvantages:
+
+* They are limited in speed, and larger applications cause them to struggle and potentially freeze
+* Heat dissipation issues place a hard limit on how fast a single-core CPU can go
+
+## Clock rate
+
+One of the key limitations to a single-core application running on a machine is the clock speed of the CPU. When we talk about clock rate, we are essentially talking about how many clock cycles a CPU can execute every second.
+
+For the past 10 years, we have watched as manufacturers managed to surpass Moore's law, which was essentially an observation that the number of transistors one was able to place on a piece of silicon doubled roughly every two years.
+
+This doubling of transistors every two years paved the way for exponential gains in single-CPU clock rates, and CPUs went from the low MHz to the 4-5 GHz clock speeds that we now see on Intel's i7 6700k processor.
+
+But with transistors getting as small as a few nanometers across, this is inevitably coming to an end. We've started to hit the boundaries of physics, and, unfortunately, if we go any smaller, we'll start being hit by the effects of quantum tunneling. Due to these physical limitations, we need to start looking at other methods in order to improve the speeds at which we are able to compute things.
+
+***This is where Materlli's Model of Scalability comes into play.***
+
+## Martelli model of scalability
+
+The author of Python Cookbook, Alex Martelli, came up with a model on scalability, which Raymond Hettinger discussed in his brilliant hour-long talk on "Thinking about Concurrency" that he gave at PyCon Russia 2016. This model represents three different types of problems and programs:
+
+* 1 core: This refers to single-threaded and single process programs
+* 2-8 cores: This refers to multithreaded and multiprocessing programs
+* 9+ cores: This refers to distributed computing
+
+The first category, the single core, single-threaded category, is able to handle a growing number of problems due to the constant improvements in the speed of single-core CPUs, and as a result, the second category is being rendered more and more obsolete. We will eventually hit a limit with the speed at which a 2-8 core system can run at, and then we'll have to start looking at other methods, such as multiple CPU systems or even distributed computing.
+
+If your problem is worth solving quickly, and it requires a lot of power, then the sensible approach is to go with the distributed computing category and spin up multiple machines and multiple instances of your program in order to tackle your problems in a truly parallel manner. Large enterprise systems that handle hundreds of millions of requests are the main inhabitants of this category. You'll typically find that these enterprise systems are deployed on tens, if not hundreds, of high performance, incredibly powerful servers in various locations across the world.
+
+## Time-sharing - the task scheduler
+
+One of the most important parts of the operating system is the task scheduler. This acts as the maestro of the orchestra, and directs everything with impeccable precision and incredible timing and discipline. This maestro has only one real goal, and that is to ensure that every task has a chance to run through till completion; the when and where of a task's execution, however, is non-deterministic. That is to say, if we gave a task scheduler two identical competing processes one after the other, there is no guarantee that the first process will complete first. This non-deterministic nature is what makes concurrent programming so challenging.
+
+An excellent example that highlights this non-deterministic behavior is the following code:
+
+```Python
+import threading
+import time
+import random
+
+counter = 1
+
+
+def worker_a():
+    global counter
+    while counter < 1000:
+        counter += 1
+        print("Worker A is incrementing counter to {0}".format(counter))
+        sleep_time = random.randint(0, 1)
+        time.sleep(sleep_time)
+
+
+def worker_b():
+    global counter
+    while counter > -1000:
+        counter -= 1
+        print("Worker B is decrementing counter to {0}".format(counter))
+        sleep_time = random.randint(0, 1)
+        time.sleep(sleep_time)
+
+
+def main():
+    t0 = time.perf_counter()
+
+    thread1 = threading.Thread(target=worker_a)
+    thread2 = threading.Thread(target=worker_b)
+
+    thread1.start()
+    thread2.start()
+
+    thread1.join()
+    thread2.join()
+
+    t1 = time.perf_counter()
+
+    print("Execution time {0}".format(t1 - t0))
+
+
+if __name__ == '__main__':
+    main()
+
+```
+
+Here in the preceding code, we have two competing threads in Python that are each trying to accomplish their own goal of either decrementing the counter to 1,000, or conversely incrementing it to 1,000. In a single-core processor, there is the possibility that worker A manages to complete its task before worker B has a chance to execute, and the same can be said for worker B. However, there is a third potential possibility, and that is that the task scheduler continues to switch between worker A and worker B an infinite number of times and never completes.
+
+The preceding code, incidentally, also shows one of the dangers of multiple threads accessing shared resources without any form of synchronization. There is no accurate way to determine what will happen to our counter, and as such, our program could be considered unreliable.
+
+## Multi-core processors
+
+We've now got some idea as to how single-core processors work, but now it's time to take a look at multi-core processors. Multi-core processors contain multiple independent processing units or “cores”. Each core contains everything it needs in order to execute a sequence of stored instructions. These cores each follow their own cycle, which consists of the following processes:
+
+* **Fetch:** This step involves fetching instructions from the program memory. This is dictated by a program counter (PC), which identifies the location of the next step to execute.
+* **Decode:** The core converts the instruction that it has just fetched, and converts it into a series of signals that will trigger various other parts of the CPU.
+* **Execute:** Finally, we perform the execute step. This is where we run the instruction that we have just fetched and decoded, and the results of this execution are then stored in a CPU register.
+
+Having multiple cores offers us the advantage of being able to work independently on multiple ```Fetch -> Decode -> Execute``` cycles. This style of architecture enables us to create higher performance programs that leverage this parallel execution.
+
+The following are the advantages of multi-core processors:
+
+* We are no longer bound by the same performance limitations that a single-core processor is bound to
+* Applications that are able to take advantage of multiple cores will tend to run faster if well designed
+
+However, these are the disadvantages of multi-core processors:
+
+* They require more power than your typical single-core processor
+* Cross-core communication is no simple feat; we have multiple different ways of doing this, about which I will go into more detail later in this chapter
+
+## System architecture styles
+
+When designing your programs, it's important to note that there are a number of different memory architecture styles that suit the needs of a range of different use cases. One style of memory architecture could be excellent for parallel computing tasks and scientific computing, but somewhat cumbersome when it comes to your standard home-computing tasks.
+
+When we categorize these different styles, we tend to follow a taxonomy first proposed by a man named Michael Flynn in 1972. This taxonomy defines four different styles of computer architecture. These are:
+
+* SISD: single instruction stream, single data stream
+* SIMD: single instruction stream, multiple data stream
+* MISD: multiple instruction stream, single data stream
+* MIMD: multiple instruction stream, multiple data stream
+
+We will look in more detail at these architectures in the following sections.
+
+### SISD
+
+Single Instruction streams, Single Data streams tend to be your uniprocessor systems. These systems have one sequential stream of data coming into them, and one single processing unit that is used to execute this stream.
+
+This style of architecture typically represents your classical Von Neumann machines, and for a vast number of years, before multi-core processors became popular, this represented your typical home computer. You would have a single processor that handled everything you required. These would, however, be incapable of things such as instruction parallelism and data parallelism, and things such as graphics processing were incredibly taxing on these systems.
+
+The following figure shows an overview of how a uniprocessor system looks. It features one data source that is processed by a single processing unit:
+
+![SISD](ScreenshotsForNotes/Chapter2/SISD.PNG)
+
+This style of architecture features all of the advantages and disadvantages that we outlined earlier in the chapter when we covered single-core processors.
+
+An example of a uniprocessor could be the Intel Pentium 4.
+
+### SIMD
+
+SIMD (single instruction stream, multiple data streams) archtecture, multiple data streams architecture is best suited to working with systems that process a lot of multimedia. These are ideal for doing things such as 3D graphics due to the way in which they can manipulate vectors. For instance, say you had two distinct arrays, [10,15,20,25] and [20, 15,10, 5]. In an SIMD architecture, you are able to add these in one operation to get [30,30,30,30]. If we were to do this on scalar architecture, we would have to perform four distinct add operations, as shown in the following figure:
+
+![SIMD1](ScreenshotsForNotes/Chapter2/SIMD1.PNG)
+
+The best example of this style of architecture can be found within your graphics processing unit. In OpenGL graphics programming, you have objects called Vertex Array Objects or VAOs, and these VAOs typically contain multiple Vertex Buffer Objects that describe any given 3D object in a game. If someone was to, say, move their character, every element within every Vertex Buffer object would have to be recalculated incredibly quickly in order to allow us to see the character move smoothly across our screens.
+
+This is where the power of SIMD architecture really shines. We pass all of our elements into distinct VAOs. Once these VAOs have been populated, we can then tell it that we want to multiply everything within this VAO with a rotation matrix. This then very quickly proceeds to perform the same action on every element far more efficiently than a non-vector architecture ever could.
+
+The next diagram shows a high-level overview of an SIMD architecture. We have multiple data streams, which could represent multiple vectors, and a number of processing units, all able to act on a single instruction at any given time. Graphics cards typically have hundreds of individual processing units:
+
+The main advantages of SIMD are as follows:
+
+* We are able to perform the same operation on multiple elements using one instruction
+* As the number of cores on modern graphics cards increases, so too will the throughput of these cards, thanks to this architecture
+
+### MISD
+
+Multiple instruction streams, single data streams or MISD is a somewhat unloved style of architecture with no real examples currently available commercially. It's typically quite hard to find a use case in which an MISD architecture style is appropriate, and would lend itself well to a problem.
+
+No real examples of an MISD architecture are available commercially today.
+
+### MIMD
+
+Multiple instruction streams, multiple data streams is the most diverse taxonomy, and encapsulates all modern day multi-core processors. Each of the cores that make up these processors are capable of running independently and in parallel. In contrast to our SIMD machines, MIMD-based machines are able to run a number of distinct operations on multiple datasets in parallel as opposed to a single operation on multiple datasets.
+
+The next diagram shows an example of a number of different processing units, all with a number of different input data streams all acting independently:
+
+![MIMD](ScreenshotsForNotes/Chapter2/MIMD.PNG)
+
+A normal multiprocessor typically uses MIMD architecture.
+
+## Computer memory architecture
+
+When we start to speed up our programs by introducing concepts such as concurrency and parallelism, we start to face new challenges that must be thought about and addressed appropriately. One of the biggest challenges we start to face is the speed at which we can access data. It's important to note at this stage that if we cannot access data fast enough, then this becomes a bottleneck for our programs, and no matter how expertly we design our systems, we'll never see any performance gains.
+
+Computer designers have been increasingly looking for ways to improve the ease with which we can develop new parallel solutions to problems. One of the ways they have managed to improve things is by providing a single physical address space that all of our multiple cores can access within a processor. This removes a certain amount of complexity away from us, as programmers, and allows us to instead focus on ensuring that our code is thread safe.
+
+There are a number of these different styles of architecture used in a wide range of different scenarios. The main two different architectural styles employed by system designers tend to be those that follow a Uniform Memory Access pattern or a Non-uniform memory access pattern, or UMA and NUMA respectively.
+
+## UMA
+
+UMA (Uniform Memory Access) is an architecture style that features a shared memory space that can be utilized in a uniform manner by any number of processing cores. In layman's terms this means that regardless of where that core resides, it will be able to directly access a memory location in the same time no matter how close the memory is. This style of architecture is also known as Symmetric Shared-Memory Multiprocessors or SMP in short.
+
+The following image depicts how a UMA-style system would piece together. Each processor interfaces with a bus, which performs all of the memory accessing. Each processor added to this system increases the strain on the bus bandwidth, and thus we aren't able to scale it in quite the same way we could if we were to use a NUMA architecture:
+
+![UMA](ScreenshotsForNotes/Chapter2/UMA.PNG)
+
+The advantages of UMA are as follows:
+
+* All RAM access takes the exact same amount of time
+* Cache is coherent and consistent
+* Hardware design is simpler
+
+However, there is one disadvantage of UMA:
+
+* UMA systems feature one memory bus from which all systems access memory; unfortunately, this presents scaling problems
+
+## NUMA
+
+NUMA (Non-uniform Memory Access) is an architecture style in which some memory access may be faster than others depending on which processor requested it--this could be due to the location of the processor with respect to the memory.
+
+Show next is a diagram that shows exactly how a number of processors interconnect in NUMA style. Each has their own cache, access to the main memory, and independent I/O, and each is connected to the interconnection network:
+
+![NUMA](ScreenshotsForNotes/Chapter2/NUMA.PNG)
+
+There is one major advantage of NUMA:
+
+* NUMA machines are more scalable than their uniform-memory access counterparts
+
+The following are the disadvantages of NUMA:
+
+* Non-deterministic memory access times can lead to either really quick access times if memory is local, or far longer times if memory is in distant memory locations
+* Processors must observe the changes made by other processors; the amount of time it takes to observe increases in relation to how many processors are part of i
