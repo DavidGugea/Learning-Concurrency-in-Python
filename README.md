@@ -197,6 +197,8 @@ IronPython is the .NET equivalent of Jython and works on top of Microsoft's .NET
 
 # 2. Parallelize It
 
+```>```
+
 ## Introduction
 
 Concurrency is, essentially, the practice of doing multiple things at the same time, but not, specifically, in parallel. It can help us to improve the perceived performance of our applications, and it can also improve the speed at which our applications run.
@@ -469,3 +471,290 @@ The following are the disadvantages of NUMA:
 
 * Non-deterministic memory access times can lead to either really quick access times if memory is local, or far longer times if memory is in distant memory locations
 * Processors must observe the changes made by other processors; the amount of time it takes to observe increases in relation to how many processors are part of i
+
+# 3. Life of a Thread
+
+## Brief introduction to threads
+
+A thread can be in the following states:
+
+* New Thread
+    * This means that you have created an instance of the ```threading.Thread``` object. The thread hasn't started, nothing has happened to it yet. At this point, your thread is nothing but an object stored on the heap.
+* Runnable
+    * This means that you thread is ready to run. It doesn't mean that it's running, it just means that is it *ready* to run.
+* Running
+    * The thread is currently running. From this state, it can either go into a *not-running* state or into a *dead* state
+* Not-running
+    * The thread has stopped running. In this case, the thread might be waiting for something to finish or it might be blocked by some I/O request, but might start running again in the future
+* Dead
+    * The thread has stopped and it will not run again.
+
+This is how create a thread:
+
+```python
+import threading
+import time
+
+
+def do_something(i):
+    print(f"Thread started. Waiting for {i} second(s)")
+    time.sleep(i)
+    print(f"Thread ended. Waiting for {i} second(s)")
+
+
+if __name__ == '__main__':
+    thread_0 = threading.Thread(target=do_something, args=(1,))
+    thread_1 = threading.Thread(target=do_something, args=(1,))
+
+    time_start = time.perf_counter()
+
+    thread_0.start()
+    thread_1.start()
+
+    thread_0.join()
+    thread_1.join()
+
+    time_end = time.perf_counter()
+    print(f"Time needed for the both threads to run: {round(time_end-time_start, 2)} second(s)")
+```
+
+I have created two threads using the ```threading.Thread``` class. The ```target``` kwargs represents the task of the specific thread, which is just a function. The ```args``` kwarg is an iterable containing the args that must be given to the target function.
+
+I have started the two threads using the ```thread.start()``` method. This method doesn't really start the threads, it puts them into the *'Runnable'* state. The system then decides when the threads can be started. If you use ```thread.run()```, only the target function will start, and will behave like a normal function, not a thread. ```thread.run()``` doesn't mean that the thread will start running, it just means that you are executing the target function as a normal function and not as a real thread.
+
+The function ```thread.join()``` makes sure that the program won't move on until the thread is not finished yet.
+
+## Threads in Python
+
+Before we jump into more detail about the life of a thread, I feel it's important to know what we are going to be instantiating in real terms. In order to know this, however, we'll need to have a look at Python's Thread class definition which can be found in threading.py.
+
+Within this file, you should see the class definition for the Thread class. This has a constructor function which looks something like this:
+
+```Python # Python Thread class Constructor def __init__(self, group=None, target=None, name=None, args=(), kwargs=None, verbose=None):        ... ```
+
+This preceding constructor takes in five real arguments, which are defined within that class definition as follows: * ```group```: This is a special parameter which is reserved for a future extension. * ```target```: This is the callable object to be invoked by the run() method. If not passed, this will default to None, and nothing will be started. * ```name```: This is the thread name. * ```args```: This is the argument tuple for target invocation. It defaults to (). * ```kwargs```: This is a dictionary of keyword arguments to invoke the base class constructor.
+
+## Thread State
+
+Threads can exist in five distinct states: running, not-running, runnable, starting, and ended. When we create a thread, we have, typically, not allocated any resources towards this thread as of yet. It exists in no state, as it hasn't been initialized, and it can only be started or stopped. Let's take a quick look at these five states:
+
+* **New Thread:** In the New Thread state, our thread hasn't started, and it hasn't been allocated resources. It is merely an instance of an object. * **Runnable:** This is the state when the thread is waiting to run, it has all the resources it needs in order to proceed, and the only thing holding it back is the task scheduler having not scheduled it to run. * **Running:** In this state, the thread makes progress--it executes whatever task it's meant to and has been chosen by the task scheduler to run. From this state, our thread can go into either a dead state if we chose to kill, it or it could go into a not-running state. * **Not-running:** This is when the thread has been paused in some way. This could be caused by a number of reasons such as when waiting for the response of a long running I/O request. Or it could be deliberately blocked until another thread has completed its execution. * **Dead:** A thread can reach this state through one of two ways. It can, much like us, die of natural causes or be killed unnaturally. The latter poses a significant risk to the murderer, but we'll go into these risks in detail in the ending a thread section of this chapter.
+
+## State flow chart
+
+The following diagram represents the five different states that a thread can be in as well as the possible transitions from one state to another:
+
+![StateFlowChart](ScreenshotsForNotes/Chapter3/StateFlowChart.PNG)
+
+## Python example of thread state
+
+So now that we know the various states that our threads can be in, how does this translate into our Python programs? Take a look at the following code:
+
+```Python
+import threading
+import time
+
+
+# A very simple method for our thread to execute
+def thread_worker():
+    # it is only at the point where the thread starts executing that it's state goes from 'Runnable' to a 'Running'
+    # state
+    print("My Thread has entered the 'Running' State")
+    # If we call the time.sleep() method then our thread goes into a not-runnable state. We can do no further work on
+    # this particular thread
+    print('before sleep')
+    time.sleep(2)
+    print('after sleep')
+    # Thread then completes its tasks and terminates
+    print("My Thread is terminating")
+
+
+# At this point in time, the thread has no state it hasn't been allocated any system resources
+my_thread = threading.Thread(target=thread_worker)
+
+# When we call my_thread.start(), Python allocates the necessary system resources in order for our thread to run and
+# then calls the thread's run method. It goes from 'starting' state to 'Runnable' but not running
+my_thread.start()
+
+# Here we join the thread and when this method is called our thread goes into a 'Dead' state. It has finished the job
+# that it was intended to do.
+print('test 1')
+my_thread.join()
+print('test 2')
+
+print("My Thread has entered a 'Dead' state")
+
+"""
+Output:
+
+My Thread has entered the 'Running' State
+before sleep
+test 1
+after sleep
+My Thread is terminating
+test 2
+My Thread has entered a 'Dead' state
+"""
+```
+
+### Breaking it down
+
+In this preceding code example, we define a function, threadWorker, which will be the invocation target of the thread that we will create. All that this threadWorker function does is to print out its current state, and then sleep for 10 seconds by calling time.sleep(10).
+
+After we've defined threadWorker, we then go on to create a New Thread object in this line:
+
+```Python myThread = threading.Thread(target=threadWorker) ```
+
+At this point in time, our thread object is currently in the New Thread state, and hasn't yet been allocated any system resources that it needs to run. This only happens when we go on to call this function:
+
+```Python myThread.start() ```
+
+At this point, our thread is allocated with all of its resources, and the thread's run function is called. The thread now enters the "Runnable" state. It goes on to print out its own state, and then proceeds to block for 10 seconds by calling time.sleep(10). During the 10 seconds that this thread sleeps, the thread is considered to be in the "Not-Running" state, and other threads will be scheduled to run over this thread.
+
+Finally, once the 10-second period has elapsed, our thread is considered to have ended and be in the "Dead" state. It no longer needs any of the resources that it was allocated, and it will be cleaned up by the garbage collector.
+
+## Different types of threads
+
+Python abstracts most of the complications of lower-level threading APIs, and allows us to focus on creating even more complex systems on top of it. Not only that, it lets us write portable code that can leverage either POSIX or Windows threads depending on what operating system we execute our code on.
+
+But what do we mean when we mention things like POSIX threads or Windows threads?
+
+### POSIX threads
+
+When we talk about POSIX threads, we are talking about threads that are implemented to follow the IEEE POSIX 1003.1c standard. This standard was registered as a trademark of the IEEE foundation, and was originally developed in order to standardize the implementation of threads across a range of hardware on UNIX systems. Any implementations of threads that follow this standard are, typically, called POSIX threads or PThreads for short.
+
+### Windows threads
+
+When we talk about Windows threads, we are talking about the standard that Microsoft has chosen to implement their own low-level threads against other threads. They feature quite a number of differences when compared to POSIX threads, and the Windows threads API is simpler and overall more elegant than the POSIX threads API.
+
+## Forking
+
+To fork a process is to create a second exact replica of the given process. In other words, when we fork something, we effectively clone it and then run it as a child process of the process that we just cloned from.
+
+This newly created process gets its own address space as well as an exact copy of the parent's data and the code executing within the parent process. When created, this new clone receives its own unique Process IDentifier (PID), and is independent of the parent process from which it was cloned.
+
+## Daemonizing a thread
+
+Firstly, before we look at daemon threads, I feel it is important to know what these are. Daemon threads are 'essentially' threads that have no defined endpoint. They will continue to run forever until your program quits.
+
+"Why is this useful?", you might ask. Say, for example, you have a load balancer that sends service requests to multiple instances of your application. You might have some form of registry service that lets your load balancer know where to send these requests, but how does this service registry know the state of your instance? Typically, in this scenario, we would send out something called a heartbeat or a keep alive packet at a regular interval to say to our service registry, “Hey, I'm still 200!”.
+
+This example is a prime use case for daemon threads within our application. We could migrate the job of sending a heartbeat signal to our service registry to a daemon thread, and start this up when our application is starting. This daemon thread will then sit in the background of our program, and periodically send this update without any intervention on our part. What's even better is that our daemon thread will be killed without us having to worry about it when our instance shuts down.
+
+```Python
+import threading
+import time
+
+
+def standard_thread():
+    print("Starting my standard thread")
+    time.sleep(20)
+    print("Ending my standard thread")
+
+
+def daemon_thread():
+    while True:
+        print("Sending out heartbeat signal")
+        time.sleep(2)
+
+
+if __name__ == '__main__':
+    standard_thread_obj = threading.Thread(target=standard_thread)
+    daemon_thread_obj = threading.Thread(target=daemon_thread, daemon=True)
+
+    daemon_thread_obj.start()
+    standard_thread_obj.start()
+```
+
+## Total number of active threads
+
+You can get the total number of active threads by using the ```threading.active_count()``` function.
+
+## Getting the current thread
+
+You can get the current thread by using the ```threading.current_thread()``` function.
+
+## Main thread
+
+You can get the main thread by using the ```threading.main_thread()``` function.
+
+## Enumerating all threads
+
+You can enumerate all threads by using the ```threading.enumerate()``` function.
+
+## Identifying threads
+
+In certain scenarios, it can be very helpful for us, as developers, to be able to distinguish between different threads. In some scenarios, your application may be made up of hundreds of different threads, and identifying them might help ease your pain when it comes to debugging and identifying issues with your underlying program.
+
+In massive systems, it is a good idea to segregate threads into groups if they are performing different tasks. Say, for instance, you have an application that both listens for incoming stock price changes and also tries to predict where that price will go. You could, for instance, have two different thread groups here: one group listening for the changes and the other performing the necessary calculations.
+
+Having different naming conventions for the threads that do the listening and the threads that do the calculations could make your job of tailing log files a hell of a lot easier.
+
+## Ending a thread
+
+Ending threads is deemed bad practice, and one that I actively advise against. Python doesn't actually provide a native thread function with which to kill other threads, so this should raise flags straight away. These threads that you wish to terminate could be holding a critical resource that needs to be opened and closed properly, or they could also be the parents to multiple child threads. By killing parent threads without killing their child threads, we essentially create orphan threads.
+
+## Best practice in stopping threads
+
+If you require some form of a thread shutdown mechanism, then it is your job to implement a mechanism that allows for a graceful shutdown as opposed to killing a thread outright.
+
+However, there does exist a workaround; while threads might not possess a native mechanism for termination, processes do, in fact, feature such a mechanism. As you should know by now, processes are essentially beefier versions of threads, and while it might not be ideal, in some situations you have to ensure that your programs can gracefully shut down, and this presents itself as a far cleaner solution than implementing your own thread termination. Let's take a look at another example:
+
+```Python
+from multiprocessing import Process
+import time
+
+
+def my_worker():
+    print(f"Process started at: {time.ctime(time.time())}")
+    time.sleep(20)
+
+
+my_process = Process(target=my_worker)
+print(f"Process: {my_process}")
+my_process.start()
+print("Terminating Process...")
+my_process.terminate()
+my_process.join()
+print(f"Process terminated: {my_process}")
+```
+
+## Orphan processes
+
+Orphan processes are threads that have no alive parent process. They take up system resources and provide no benefit, and the only way to kill them is to enumerate alive threads and then kill them.
+
+## Creating processes versus threads
+
+A process, as we've seen, is a more heavyweight version of a simple thread in the sense that we can do things like spin up multiple threads within a process. They can perform more CPU-bound tasks better than a standard thread would due to the fact that they each feature their own separate GIL instance.
+
+However, it's important to note that while these might be far better at CPUbound problems, they are also more resource intensive. Being more resource intensive means that they are also more expensive to spin up on the fly and kill off just as quickly. In this next example, we'll look at the performance impact of spinning up multiple threads, and compare this to the spinning up of multiple processes.
+
+## Multithreading models
+
+In Chapter 1, Speed It Up!, the first section provide a brief introduction to concurrency, where we talked about the two distinct types of threads that we have on a single machine. These were user threads and kernel threads, and it's useful to know how these map to each other, and the different ways that they can be mapped together. In total, there are these three different styles of mapping:
+
+* One user thread to one kernel thread * Many user-level threads to one kernel thread * Many user threads to many kernel threads
+
+Within Python, we typically go with the one user thread to one kernel thread mapping, and as such, every thread you create within your multithreaded applications will take up a non-trivial amount of resources on your machine.
+
+However, there do exist some modules within the Python ecosystem that enable you to implement multithreaded-esque functionality to your program while remaining on a single thread.
+
+## One-to-one thread mapping
+
+In this mapping, we see one user-level thread being mapped directly to one kernel-level thread. One-to-one mappings can be expensive due to the inherent costs of creating and managing kernel-level threads, but they provide advantages in the sense that user-level threads are not subject to the same level of blocking as threads that follow a many-to-one mapping are subject to:
+
+![One-to-one thread mapping](ScreenshotsForNotes/Chapter3/OneToOneThreadMapping.PNG)
+
+## Many-to-one
+
+In many-to-one mappings, we see many user-level threads being mapped to one solitary kernel-level thread. This is advantageous as we can manage userlevel threads efficiently; however, should if the user-level thread is blocked, the other threads that are mapped to kernel-level thread will also be blocked:
+
+![Many-to-one](ScreenshotsForNotes/Chapter3/ManyToOne.PNG)
+
+## Many-to-many
+
+In this threading model, we see many user-level threads being mapped to many kernel-level threads. This presents itself as the solution to the shortcomings of the previous two models.
+
+Individual user-level threads can be mapped to a combination of either a single kernel-level thread or multiple kernel threads. It provides us, as programmers, the ability to choose which user-level threads we wish to map to kernel-level threads, and, overall, entitle us to a great deal of power when trying to ensure the very highest of performances when working in a multithreaded environment:
+
+![Many-to-many](ScreenshotsForNotes/Chapter3/ManyToMany.PNG
