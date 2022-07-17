@@ -757,4 +757,4 @@ In this threading model, we see many user-level threads being mapped to many ker
 
 Individual user-level threads can be mapped to a combination of either a single kernel-level thread or multiple kernel threads. It provides us, as programmers, the ability to choose which user-level threads we wish to map to kernel-level threads, and, overall, entitle us to a great deal of power when trying to ensure the very highest of performances when working in a multithreaded environment:
 
-![Many-to-many](ScreenshotsForNotes/Chapter3/ManyToMany.PNG
+![Many-to-many](ScreenshotsForNotes/Chapter3/ManyToMany.PNG)
